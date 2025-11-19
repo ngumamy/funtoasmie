@@ -21,6 +21,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Validate Dockerfiles exist
         run: |
@@ -53,6 +55,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -132,7 +136,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Validate VPS secrets
+      - name: Validate VPS and registry secrets
         run: |
           if [ -z "${{ secrets.IP_SRV }}" ]; then
             echo "❌ Secret IP_SRV is not set!"
@@ -148,6 +152,11 @@ jobs:
           fi
           if [ -z "${{ secrets.PORT_SRV }}" ]; then
             echo "❌ Secret PORT_SRV is not set!"
+            exit 1
+          fi
+          # GHCR_TOKEN should be set as a PAT with read:packages for the server to pull private images
+          if [ -z "${{ secrets.GHCR_TOKEN }}" ]; then
+            echo "❌ Secret GHCR_TOKEN is not set! Please provide a PAT with read:packages (GHCR_TOKEN)."
             exit 1
           fi
           echo "✅ All required secrets are set"
@@ -191,7 +200,8 @@ jobs:
               echo "❌ Répertoire $DEPLOY_DIR introuvable!"
               echo "📝 Création du répertoire..."
               sudo mkdir -p $DEPLOY_DIR || { echo "❌ Impossible de créer le répertoire!"; exit 1; }
-              sudo chown $USER:$USER $DEPLOY_DIR || true
+              # Changer la propriété sur l'utilisateur de déploiement (USR_SRV)
+              sudo chown ${{ secrets.USR_SRV }}:${{ secrets.USR_SRV }} $DEPLOY_DIR || true
             fi
             
             cd $DEPLOY_DIR || { echo "❌ Impossible d'accéder au répertoire $DEPLOY_DIR!"; exit 1; }
@@ -212,7 +222,11 @@ jobs:
             
             # Se connecter au registre GitHub Container Registry
             echo "🔐 Authentification au registre Docker..."
-            GHCR_TOKEN="${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}"
+            GHCR_TOKEN="${{ secrets.GHCR_TOKEN }}"
+            if [ -z "$GHCR_TOKEN" ]; then
+              echo "❌ GHCR_TOKEN is empty on runner; aborting"
+              exit 1
+            fi
             echo "$GHCR_TOKEN" | docker login ghcr.io -u ${{ github.actor }} --password-stdin || { 
               echo "❌ Échec de la connexion au registre!"
               exit 1
@@ -275,12 +289,36 @@ jobs:
             echo "📊 État des conteneurs:"
             $DOCKER_COMPOSE -f $COMPOSE_FILE ps
             
-            # Vérifier que tous les conteneurs sont en cours d'exécution
-            FAILED_CONTAINERS=$($DOCKER_COMPOSE -f $COMPOSE_FILE ps --format json | grep -c '"State":"failed"' || echo "0")
-            if [ "$FAILED_CONTAINERS" -gt "0" ]; then
-              echo "❌ Certains conteneurs ont échoué!"
-              $DOCKER_COMPOSE -f $COMPOSE_FILE ps
-              exit 1
+            # Vérifier que tous les services répondent (smoke test) si SMOKE_URL est fourni
+            if [ -n "${{ secrets.SMOKE_URL }}" ]; then
+              echo "🔎 Smoke test: ${{ secrets.SMOKE_URL }}"
+              RETRIES=10
+              SLEEP=3
+              OK=0
+              for i in $(seq 1 $RETRIES); do
+                if curl -fsS "${{ secrets.SMOKE_URL }}" >/dev/null 2>&1; then
+                  OK=1
+                  break
+                fi
+                echo "Attente du service... ($i/$RETRIES)"
+                sleep $SLEEP
+              done
+              if [ "$OK" -ne 1 ]; then
+                echo "❌ Smoke test failed for ${{ secrets.SMOKE_URL }}"
+                $DOCKER_COMPOSE -f $COMPOSE_FILE ps
+                $DOCKER_COMPOSE -f $COMPOSE_FILE logs --tail=50
+                exit 1
+              fi
+              echo "✅ Smoke test passed"
+            else
+              # Fallback: vérifier l'état via docker compose ps (recherche simple d'Exit)
+              EXITED_COUNT=$($DOCKER_COMPOSE -f $COMPOSE_FILE ps --filter "status=exited" --format "{{.Name}}" | wc -l || echo 0)
+              if [ "$EXITED_COUNT" -gt "0" ]; then
+                echo "❌ Certains conteneurs sont dans l'état exited"
+                $DOCKER_COMPOSE -f $COMPOSE_FILE ps
+                $DOCKER_COMPOSE -f $COMPOSE_FILE logs --tail=50
+                exit 1
+              fi
             fi
             
             # Afficher les logs récents pour vérification
