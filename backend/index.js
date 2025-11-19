@@ -112,7 +112,7 @@ app.use(cors({
 
 
 // Gérer explicitement les requêtes OPTIONS (preflight) AVANT le rate limiter
-app.options('*', (req, res) => {
+app.options('/*', (req, res) => {
   const origin = req.headers.origin;
   if (origin) {
     res.header('Access-Control-Allow-Origin', origin);
