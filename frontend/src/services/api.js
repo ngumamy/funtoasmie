@@ -12,11 +12,13 @@ class ApiService {
     const token = localStorage.getItem('token');
     
     const config = {
+      method: options.method || 'GET',
       headers: {
         'Content-Type': 'application/json',
         ...(token && { Authorization: `Bearer ${token}` }),
         ...options.headers,
       },
+      credentials: 'include', // Important pour CORS avec credentials
       ...options,
     };
 

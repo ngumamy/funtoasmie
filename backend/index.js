@@ -37,7 +37,18 @@ app.use(helmet({
 }));
 
 // CORS doit passer AVANT tout middleware qui peut répondre (ex: rate limiter)
-const normalizeOrigin = (origin) => origin.replace(/\/$/, '');
+const normalizeOrigin = (origin) => {
+  if (!origin) return origin;
+  // Supprimer le trailing slash
+  let normalized = origin.replace(/\/$/, '');
+  // Normaliser les ports par défaut (http://example.com:80 -> http://example.com)
+  normalized = normalized.replace(/:(80|443)$/, '');
+  // Si pas de port et http, considérer comme port 80
+  if (normalized.startsWith('http://') && !normalized.match(/:\d+/)) {
+    // Ne pas changer, garder tel quel pour la comparaison
+  }
+  return normalized;
+};
 
 const allowedOrigins = Array.isArray(config.cors.origin)
   ? config.cors.origin
@@ -45,31 +56,72 @@ const allowedOrigins = Array.isArray(config.cors.origin)
 
 const normalizedAllowedOrigins = allowedOrigins.map(normalizeOrigin);
 
+// Ajouter les variantes avec/sans port pour chaque origine
+const expandedOrigins = [...new Set([
+  ...normalizedAllowedOrigins,
+  ...normalizedAllowedOrigins.map(orig => {
+    if (orig.startsWith('http://') && !orig.match(/:\d+/)) {
+      return `${orig}:80`;
+    }
+    if (orig.startsWith('https://') && !orig.match(/:\d+/)) {
+      return `${orig}:443`;
+    }
+    return orig;
+  }),
+  ...normalizedAllowedOrigins.map(orig => orig.replace(/:80$/, '').replace(/:443$/, ''))
+])];
+
 app.use(cors({
   origin: (origin, callback) => {
-    // Permettre les requêtes sans origine (ex: applications mobiles, Postman)
+    // Permettre les requêtes sans origine (ex: applications mobiles, Postman, curl)
     if (!origin) {
       return callback(null, true);
     }
 
     const normalizedOrigin = normalizeOrigin(origin);
+    
+    // Créer une liste d'origines à vérifier (avec et sans port)
+    const originsToCheck = [normalizedOrigin];
+    if (normalizedOrigin.startsWith('http://') && !normalizedOrigin.match(/:\d+$/)) {
+      originsToCheck.push(`${normalizedOrigin}:80`);
+    } else if (normalizedOrigin.match(/:80$/)) {
+      originsToCheck.push(normalizedOrigin.replace(/:80$/, ''));
+    }
+    
     const isAllowed =
-      normalizedAllowedOrigins.includes('*') ||
-      normalizedAllowedOrigins.includes(normalizedOrigin);
+      expandedOrigins.includes('*') ||
+      originsToCheck.some(o => expandedOrigins.includes(o));
 
     if (isAllowed) {
+      console.log(`✅ CORS: Origin ${origin} (normalized: ${normalizedOrigin}) allowed`);
       return callback(null, true);
     }
 
-    // Log pour débogage (peut être supprimé en production)
-    console.warn(`CORS: Origin ${origin} (normalized: ${normalizedOrigin}) not allowed. Allowed origins:`, normalizedAllowedOrigins);
+    // Log pour débogage
+    console.warn(`❌ CORS: Origin ${origin} (normalized: ${normalizedOrigin}) not allowed.`);
+    console.warn(`   Checking origins:`, originsToCheck);
+    console.warn(`   Allowed origins:`, expandedOrigins);
     return callback(new Error(`Origin ${origin} not allowed by CORS`));
   },
   credentials: config.cors.credentials,
   methods: config.cors.methods || ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: config.cors.allowedHeaders || ['Content-Type', 'Authorization', 'X-Requested-With'],
-  exposedHeaders: config.cors.exposedHeaders || ['Authorization']
+  exposedHeaders: config.cors.exposedHeaders || ['Authorization'],
+  optionsSuccessStatus: 200 // Pour les anciens navigateurs
 }));
+
+// Gérer explicitement les requêtes OPTIONS (preflight) AVANT le rate limiter
+app.options('*', (req, res) => {
+  const origin = req.headers.origin;
+  if (origin) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    res.header('Access-Control-Max-Age', '86400'); // 24 heures
+  }
+  res.sendStatus(200);
+});
 
 // Limiteur après CORS pour que les réponses 429 aient les bons en-têtes CORS
 app.use(generalLimiter);
