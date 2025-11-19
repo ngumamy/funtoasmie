@@ -110,9 +110,9 @@ app.use(cors({
   optionsSuccessStatus: 200 // Pour les anciens navigateurs
 }));
 
+
 // Gérer explicitement les requêtes OPTIONS (preflight) AVANT le rate limiter
-// Utiliser '/*' au lieu de '*' pour Express 5/path-to-regexp
-app.options('/*', (req, res) => {
+app.options('*', (req, res) => {
   const origin = req.headers.origin;
   if (origin) {
     res.header('Access-Control-Allow-Origin', origin);
@@ -121,8 +121,9 @@ app.options('/*', (req, res) => {
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
     res.header('Access-Control-Max-Age', '86400'); // 24 heures
   }
-  res.sendStatus(200);
+  return res.sendStatus(200);
 });
+
 
 // Limiteur après CORS pour que les réponses 429 aient les bons en-têtes CORS
 app.use(generalLimiter);
