@@ -112,7 +112,9 @@ app.use(cors({
 
 
 // Gérer explicitement les requêtes OPTIONS (preflight) AVANT le rate limiter
-app.options('/*', (req, res) => {
+// Use '*' pattern to remain compatible with path-to-regexp versions that
+// reject patterns like '/*' (which can be parsed as a modifier without a name).
+app.options('*', (req, res) => {
   const origin = req.headers.origin;
   if (origin) {
     res.header('Access-Control-Allow-Origin', origin);
