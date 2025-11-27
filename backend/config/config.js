@@ -5,9 +5,9 @@ const config = {
   database: {
     host: process.env.DB_HOST || 'localhost',
     port: process.env.DB_PORT || 3306,
-    user: process.env.DB_USER || 'raza',
-    password: process.env.DB_PASSWORD || 'razapassword',
-    name: process.env.DB_NAME || 'db_funtoasmie'
+    user: process.env.DB_USER || '',
+    password: process.env.DB_PASSWORD || '',
+    name: process.env.DB_NAME || ''
   },
 
   // Configuration JWT
