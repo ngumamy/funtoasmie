@@ -11,7 +11,6 @@ env:
   REGISTRY: ghcr.io
   BACKEND_IMAGE: funtoa-backend
   FRONTEND_IMAGE: funtoa-frontend
-  # Convertir le repository owner en minuscules pour Docker (exigence Docker)
   REPOSITORY_OWNER: ${{ github.repository_owner }}
 
 jobs:
@@ -44,9 +43,90 @@ jobs:
             echo "✅ docker-compose.prod.yml found"
           fi
 
+  test-backend:
+    name: Test Backend
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          npm ci
+
+      - name: Run linter (ESLint)
+        run: |
+          cd backend
+          npm install --save-dev eslint eslint-config-airbnb-base eslint-plugin-import
+          npx eslint . --max-warnings=0 || true
+        continue-on-error: true
+
+      - name: Run backend tests
+        run: |
+          cd backend
+          npm test -- --coverage --testPathPattern="__tests__"
+
+      - name: Upload backend coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./backend/coverage/lcov.info
+          flags: backend
+          name: backend-coverage
+
+  test-frontend:
+    name: Test Frontend
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Run linter (ESLint)
+        run: |
+          cd frontend
+          npx eslint src --max-warnings=0 || true
+        continue-on-error: true
+
+      - name: Run frontend tests
+        run: |
+          cd frontend
+          npm test -- --coverage --watchAll=false
+
+      - name: Upload frontend coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./frontend/coverage/lcov.info
+          flags: frontend
+          name: frontend-coverage
+
   build-and-push:
     name: Build and Push Docker Images
-    needs: validate
+    needs: [validate, test-backend, test-frontend]
     runs-on: ubuntu-latest
     permissions:
       contents: read

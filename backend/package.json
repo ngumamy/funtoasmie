@@ -8,7 +8,10 @@
     "start:silent": "node index.js > /dev/null 2>&1",
     "dev": "nodemon index.js",
     "dev:silent": "nodemon index.js > /dev/null 2>&1",
-    "migrate": "node scripts/run_migrations.js"
+    "migrate": "node scripts/run_migrations.js",
+    "test": "jest --passWithNoTests",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "keywords": [
     "api",
@@ -34,6 +37,23 @@
     "mysql2": "^3.14.5"
   },
   "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^6.3.3",
     "nodemon": "^3.1.10"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "collectCoverageFrom": [
+      "**/*.js",
+      "!node_modules/**",
+      "!coverage/**"
+    ],
+    "coveragePathIgnorePatterns": [
+      "/node_modules/"
+    ],
+    "testMatch": [
+      "**/__tests__/**/*.js",
+      "**/?(*.)+(spec|test).js"
+    ]
   }
 }

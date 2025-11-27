@@ -1,0 +1,36 @@
+repo:
+  require_ci_to_pass: true
+
+coverage:
+  precision: 2
+  round: down
+  range:
+    - "70.0"
+    - "100.0"
+
+ignore:
+  - "node_modules"
+  - "__tests__"
+  - "*.test.js"
+  - "*.spec.js"
+
+flags:
+  backend:
+    carryforward: true
+    paths:
+      - backend
+  frontend:
+    carryforward: true
+    paths:
+      - frontend
+
+comment:
+  layout: "reach,diff,flags,tree"
+  behavior: default
+  require_changes: false
+  require_base: false
+  require_head: true
+  delete_outdated_comments: true
+
+ci:
+  - github
