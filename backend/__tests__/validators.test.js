@@ -23,8 +23,9 @@ describe('Validators Tests', () => {
 
   describe('Phone validation', () => {
     const validatePhone = (phone) => {
-      const phoneRegex = /^[+]?[(]?[0-9]{3}[)]?[-\s]?[0-9]{3}[-\s]?[0-9]{4,6}$/;
-      return phoneRegex.test(phone.replace(/\s/g, ''));
+      // Accept optional country code (+1, +33, etc.), optional separators and parentheses
+      const phoneRegex = /^(?:\+\d{1,3}[\s-]?)?(?:\(?\d{3}\)?)[\s.-]?\d{3}[\s.-]?\d{4}$/;
+      return phoneRegex.test(phone);
     };
 
     it('should validate correct phone format', () => {

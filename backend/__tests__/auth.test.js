@@ -12,7 +12,8 @@ describe('Authentication Tests', () => {
     });
 
     it('should reject invalid token format', () => {
-      const tokenRegex = /^[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.?[A-Za-z0-9-_.+/=]*$/;
+      // Require three JWT parts (header.payload.signature)
+      const tokenRegex = /^[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.[A-Za-z0-9-_.+\/=]+$/;
       const invalidToken = 'invalid.token';
       
       expect(tokenRegex.test(invalidToken)).toBe(false);
