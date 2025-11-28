@@ -98,11 +98,11 @@ services:
       - certbot-etc:/etc/letsencrypt
       - certbot-var:/var/lib/letsencrypt
       - ./frontend/public:/usr/share/nginx/html:ro
-    entrypoint: /bin/sh
-    # Commande à lancer manuellement pour initialiser le certificat :
-    # certbot certonly --webroot --webroot-path=/usr/share/nginx/html --email VOTRE_EMAIL --agree-tos --no-eff-email -d VOTRE_DOMAINE
+    entrypoint: /bin/sh -c "echo 'Certbot service ready. Generate certs manually or they will be auto-renewed.' && while true; do sleep 12h; certbot renew --quiet --webroot --webroot-path=/usr/share/nginx/html || true; done"
     networks:
       - funtoa-network
+    depends_on:
+      - nginx
 
 volumes:
   mysql_data:
