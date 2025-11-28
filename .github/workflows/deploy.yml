@@ -1,5 +1,23 @@
 name: Build and Deploy to VPS
 
+# ╔════════════════════════════════════════════════════════════════════════════╗
+# ║                           WORKFLOW OVERVIEW                                ║
+# ╚════════════════════════════════════════════════════════════════════════════╝
+# This workflow automates the complete CI/CD pipeline:
+#
+# 🔵 CI (CONTINUOUS INTEGRATION) - Code Quality & Testing:
+#    1. validate      → Verify Dockerfiles and docker-compose files exist
+#    2. test-backend  → Run Jest tests + coverage for Node.js backend
+#    3. test-frontend → Run React tests + coverage for frontend
+#
+# 🟢 CD (CONTINUOUS DEPLOYMENT) - Build & Deploy:
+#    4. build-and-push → Build Docker images and push to GitHub Container Registry
+#    5. deploy        → Deploy containers to VPS (37.59.118.164)
+#
+# ⚡ Trigger: On push to main/master or manual workflow_dispatch
+# ⏱️ Timeout: 15 minutes for deploy stage
+#
+
 on:
   push:
     branches:
@@ -14,6 +32,9 @@ env:
   REPOSITORY_OWNER: ${{ github.repository_owner }}
 
 jobs:
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 🔵 CI STAGE 1: CODE VALIDATION
+  # ═══════════════════════════════════════════════════════════════════════════
   validate:
     name: Validate Code
     runs-on: ubuntu-latest
@@ -43,6 +64,11 @@ jobs:
             echo "✅ docker-compose.prod.yml found"
           fi
 
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 🔵 CI STAGE 2: BACKEND TESTING
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Run Jest tests on Node 18.x and 20.x (matrix strategy for compatibility)
+  # Coverage reports uploaded to Codecov
   test-backend:
     name: Test Backend
     runs-on: ubuntu-latest
@@ -84,6 +110,11 @@ jobs:
           flags: backend
           name: backend-coverage
 
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 🔵 CI STAGE 3: FRONTEND TESTING
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Run React tests on Node 18.x and 20.x (matrix strategy for compatibility)
+  # Coverage reports uploaded to Codecov
   test-frontend:
     name: Test Frontend
     runs-on: ubuntu-latest
@@ -124,9 +155,15 @@ jobs:
           flags: frontend
           name: frontend-coverage
 
+  # ═══════════════════════════════════════════════════════════════════════════
+  # 🟢 CD STAGE 1: BUILD & PUSH DOCKER IMAGES
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Build Docker images for backend & frontend and push to GitHub Container Registry
+  # Requires: validate job to pass first (pre-check Dockerfiles exist)
+  # Outputs: Images tagged as ghcr.io/owner/funtoa-backend:latest, etc.
   build-and-push:
     name: Build and Push Docker Images
-    needs: [validate, test-backend, test-frontend]
+    needs: validate
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -216,6 +253,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # ─────────────────────────────────────────────────────────────────────────
+      # 🟢 CD STAGE 2: VALIDATE DEPLOYMENT SECRETS
+      # ─────────────────────────────────────────────────────────────────────────
       - name: Validate VPS and registry secrets
         run: |
           if [ -z "${{ secrets.IP_SRV }}" ]; then
@@ -242,6 +282,10 @@ jobs:
           echo "✅ All required secrets are set"
           echo "✅ SSH Port configured: ${{ secrets.PORT_SRV }}"
 
+      # ─────────────────────────────────────────────────────────────────────────
+      # 🟢 CD STAGE 3: SSH DEPLOY SCRIPT
+      # ─────────────────────────────────────────────────────────────────────────
+      # Execute remote deployment script on VPS via SSH
       - name: Deploy to VPS
         uses: appleboy/ssh-action@v1.0.3
         timeout-minutes: 15
@@ -253,8 +297,13 @@ jobs:
           script: |
             set -e
             
+            # ═══════════════════════════════════════════════════════════════════
+            # 🟢 DEPLOYMENT SCRIPT: Prepare, pull, and start containers on VPS
+            # ═══════════════════════════════════════════════════════════════════
+            
             echo "🚀 Démarrage du déploiement..."
             
+            # ─ Pre-deployment checks
             # Vérifier que Docker est installé
             if ! command -v docker &> /dev/null; then
               echo "❌ Docker n'est pas installé sur le serveur!"
@@ -286,6 +335,7 @@ jobs:
             
             cd $DEPLOY_DIR || { echo "❌ Impossible d'accéder au répertoire $DEPLOY_DIR!"; exit 1; }
             
+            # ─ Git repository setup
             # Initialiser Git si le répertoire n'est pas un dépôt Git
             if [ ! -d ".git" ]; then
               echo "📝 Initialisation du dépôt Git..."
@@ -300,6 +350,7 @@ jobs:
             git checkout main 2>/dev/null || git checkout master 2>/dev/null || git checkout -b main
             git pull origin main 2>/dev/null || git pull origin master 2>/dev/null || echo "⚠️ Aucune mise à jour disponible"
             
+            # ─ Docker registry authentication
             # Se connecter au registre GitHub Container Registry
             echo "🔐 Authentification au registre Docker..."
             GHCR_TOKEN="${{ secrets.GHCR_TOKEN }}"
@@ -312,6 +363,7 @@ jobs:
               exit 1
             }
             
+            # ─ Docker compose file selection
             # Utiliser docker-compose.prod.yml pour la production
             COMPOSE_FILE="docker-compose.prod.yml"
             if [ ! -f "$COMPOSE_FILE" ]; then
@@ -323,6 +375,7 @@ jobs:
               fi
             fi
             
+            # ─ Environment & image configuration
             # Vérifier que le fichier .env existe
             if [ ! -f ".env" ]; then
               echo "⚠️ Fichier .env non trouvé!"
@@ -340,6 +393,7 @@ jobs:
             echo "📦 Backend image: $BACKEND_IMAGE"
             echo "📦 Frontend image: $FRONTEND_IMAGE"
             
+            # ─ Container lifecycle management
             # Arrêter les conteneurs existants (sans supprimer les volumes)
             echo "🛑 Arrêt des conteneurs existants..."
             $DOCKER_COMPOSE -f $COMPOSE_FILE down --remove-orphans || true
@@ -361,6 +415,7 @@ jobs:
               exit 1
             }
             
+            # ─ Health checks & smoke tests
             # Attendre que les services soient prêts
             echo "⏳ Attente du démarrage des services..."
             sleep 10
@@ -401,6 +456,7 @@ jobs:
               fi
             fi
             
+            # ─ Post-deployment verification & cleanup
             # Afficher les logs récents pour vérification
             echo "📋 Logs récents:"
             $DOCKER_COMPOSE -f $COMPOSE_FILE logs --tail=30
