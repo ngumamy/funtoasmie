@@ -63,8 +63,8 @@ RUN if [ ! -f "/usr/share/nginx/html/index.html" ]; then \
     echo "✅ Frontend files copié correctement" && \
     ls -la /usr/share/nginx/html/
 
-# Valider la config nginx
-RUN nginx -t
+# Note: Ne pas valider nginx -t ici car "backend:5000" n'existe pas au build time
+# La validation se fera au runtime quand les DNS seront résolus
 
 EXPOSE 80
 
