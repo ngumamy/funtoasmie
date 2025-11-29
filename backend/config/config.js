@@ -55,9 +55,9 @@ const config = {
 
       // En développement, accepter localhost
       return [
-        'http://37.59.118.164',
-        'http://37.59.118.164:80',
-        'http://37.59.118.164:3000',
+        'http://app.funtoa-smie.com',
+        'http://app.funtoa-smie.com:80',
+        'http://app.funtoa-smie.com:3000',
         'http://127.0.0.1',
         'http://127.0.0.1:3000',
         'http://localhost:3000'
