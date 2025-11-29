@@ -64,10 +64,12 @@ const login = async (req, res) => {
 
   } catch (error) {
     console.error('Erreur lors de la connexion:', error);
+    console.error('Stack:', error.stack);
     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: MESSAGES.ERROR.SERVER_ERROR,
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      details: process.env.NODE_ENV === 'development' ? error.toString() : undefined
     });
   }
 };
