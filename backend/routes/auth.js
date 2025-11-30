@@ -7,8 +7,7 @@ const { loginValidation, registerValidation, refreshTokenValidation } = require(
 
 // Routes d'authentification
 
-// POST /api/auth/login - Connexion (protégé par rate limiter)
-router.post('/login', authLimiter, loginValidation, authController.login);
+router.post('/login', loginValidation, authController.login);
 
 // POST /api/auth/register - Inscription (protégé par rate limiter)
 router.post('/register', registerLimiter, registerValidation, authController.register);
