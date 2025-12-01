@@ -45,11 +45,10 @@ class ConsultationController {
         filters.doctor_id = req.user.id;
       }
 
-      const consultations = await Consultation.findAll(
-        parseInt(limit), 
-        parseInt(offset), 
-        filters
-      );
+      const [consultations, total] = await Promise.all([
+        Consultation.findAll(parseInt(limit), parseInt(offset), filters),
+        Consultation.countAll(filters)
+      ]);
 
       res.json({
         success: true,
@@ -57,7 +56,8 @@ class ConsultationController {
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
-          total: consultations.length
+          total: total,
+          totalPages: Math.ceil(total / parseInt(limit))
         }
       });
     } catch (error) {
@@ -90,12 +90,10 @@ class ConsultationController {
         });
       }
 
-      const consultations = await Consultation.findByDoctor(
-        parseInt(doctor_id),
-        parseInt(limit), 
-        parseInt(offset), 
-        filters
-      );
+      const [consultations, total] = await Promise.all([
+        Consultation.findByDoctor(parseInt(doctor_id), parseInt(limit), parseInt(offset), filters),
+        Consultation.countByDoctor(parseInt(doctor_id), filters)
+      ]);
 
       res.json({
         success: true,
@@ -103,7 +101,8 @@ class ConsultationController {
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
-          total: consultations.length
+          total: total,
+          totalPages: Math.ceil(total / parseInt(limit))
         }
       });
     } catch (error) {

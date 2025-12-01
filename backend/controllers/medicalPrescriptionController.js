@@ -45,11 +45,10 @@ class MedicalPrescriptionController {
         filters.doctor_id = req.user.id;
       }
 
-      const prescriptions = await MedicalPrescription.findAll(
-        parseInt(limit), 
-        parseInt(offset), 
-        filters
-      );
+      const [prescriptions, total] = await Promise.all([
+        MedicalPrescription.findAll(parseInt(limit), parseInt(offset), filters),
+        MedicalPrescription.countAll(filters)
+      ]);
 
       res.json({
         success: true,
@@ -57,7 +56,8 @@ class MedicalPrescriptionController {
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
-          total: prescriptions.length
+          total: total,
+          totalPages: Math.ceil(total / parseInt(limit))
         }
       });
     } catch (error) {
@@ -90,12 +90,10 @@ class MedicalPrescriptionController {
         });
       }
 
-      const prescriptions = await MedicalPrescription.findByDoctor(
-        parseInt(doctor_id),
-        parseInt(limit), 
-        parseInt(offset), 
-        filters
-      );
+      const [prescriptions, total] = await Promise.all([
+        MedicalPrescription.findByDoctor(parseInt(doctor_id), parseInt(limit), parseInt(offset), filters),
+        MedicalPrescription.countByDoctor(parseInt(doctor_id), filters)
+      ]);
 
       res.json({
         success: true,
@@ -103,7 +101,8 @@ class MedicalPrescriptionController {
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
-          total: prescriptions.length
+          total: total,
+          totalPages: Math.ceil(total / parseInt(limit))
         }
       });
     } catch (error) {

@@ -95,7 +95,6 @@ app.use(cors({
       originsToCheck.some(o => expandedOrigins.includes(o));
 
     if (isAllowed) {
-      console.log(`✅ CORS: Origin ${origin} (normalized: ${normalizedOrigin}) allowed`);
       return callback(null, true);
     }
 

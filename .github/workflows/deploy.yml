@@ -424,6 +424,51 @@ jobs:
             echo "📊 État des conteneurs:"
             $DOCKER_COMPOSE -f $COMPOSE_FILE ps
             
+            # ─ Database migration: Execute init.sql to create new tables
+            # Exécuter init.sql pour créer les nouvelles tables même si la base existe déjà
+            echo "🗄️ Exécution de init.sql pour créer/mettre à jour les tables..."
+            MYSQL_CONTAINER=$($DOCKER_COMPOSE -f $COMPOSE_FILE ps -q mysql)
+            if [ -n "$MYSQL_CONTAINER" ]; then
+              # Attendre que MySQL soit complètement prêt
+              echo "⏳ Attente que MySQL soit prêt..."
+              RETRIES=15
+              SLEEP=2
+              MYSQL_READY=0
+              
+              # Récupérer les variables d'environnement depuis .env ou docker-compose
+              if [ -f ".env" ]; then
+                source .env 2>/dev/null || true
+              fi
+              DB_ROOT_PASS="${DB_ROOT_PASSWORD:-rootpassword}"
+              DB_NAME_VAR="${DB_NAME:-db_funtoasmie}"
+              
+              for i in $(seq 1 $RETRIES); do
+                if docker exec $MYSQL_CONTAINER mysqladmin ping -h localhost -u root -p"$DB_ROOT_PASS" --silent 2>/dev/null; then
+                  MYSQL_READY=1
+                  break
+                fi
+                echo "Attente de MySQL... ($i/$RETRIES)"
+                sleep $SLEEP
+              done
+              
+              if [ "$MYSQL_READY" -eq 1 ]; then
+                # Exécuter init.sql
+                if [ -f "backend/init.sql" ]; then
+                  echo "📝 Exécution de backend/init.sql..."
+                  docker exec -i $MYSQL_CONTAINER mysql -u root -p"$DB_ROOT_PASS" "$DB_NAME_VAR" < backend/init.sql 2>&1 | grep -v "already exists" || {
+                    echo "⚠️ Certaines tables existent déjà (normal)"
+                  }
+                  echo "✅ init.sql exécuté avec succès"
+                else
+                  echo "⚠️ Fichier backend/init.sql non trouvé, migration ignorée"
+                fi
+              else
+                echo "⚠️ MySQL n'est pas prêt, migration init.sql ignorée"
+              fi
+            else
+              echo "⚠️ Conteneur MySQL introuvable, migration init.sql ignorée"
+            fi
+            
             # Vérifier que tous les services répondent (smoke test) si SMOKE_URL est fourni
             if [ -n "${{ secrets.SMOKE_URL }}" ]; then
               echo "🔎 Smoke test: ${{ secrets.SMOKE_URL }}"

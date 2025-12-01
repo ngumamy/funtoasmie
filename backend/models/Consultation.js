@@ -133,6 +133,48 @@ class Consultation {
     }
   }
 
+  static async countByDoctor(doctor_id, filters = {}) {
+    try {
+      let sql = `
+        SELECT COUNT(*) as total
+        FROM consultations c
+        WHERE c.doctor_id = ?
+      `;
+      const params = [doctor_id];
+
+      // Filtres (mêmes que findByDoctor)
+      if (filters.status) {
+        sql += ' AND c.status = ?';
+        params.push(filters.status);
+      }
+
+      if (filters.patient_name) {
+        sql += ' AND c.patient_name LIKE ?';
+        params.push(`%${filters.patient_name}%`);
+      }
+
+      if (filters.date_from) {
+        sql += ' AND c.consultation_date >= ?';
+        params.push(filters.date_from);
+      }
+
+      if (filters.date_to) {
+        sql += ' AND c.consultation_date <= ?';
+        params.push(filters.date_to);
+      }
+
+      if (filters.site_id) {
+        sql += ' AND c.site_id = ?';
+        params.push(filters.site_id);
+      }
+
+      const result = await query(sql, params);
+      return result[0]?.total || 0;
+    } catch (error) {
+      throw new Error(`Erreur lors du comptage des consultations: ${error.message}`);
+    }
+  }
+
   static async findByDoctor(doctor_id, limit = 50, offset = 0, filters = {}) {
     try {
       let sql = `
@@ -179,6 +221,53 @@ class Consultation {
       return consultations.map(consultation => new Consultation(consultation));
     } catch (error) {
       throw new Error(`Erreur lors de la recherche des consultations: ${error.message}`);
+    }
+  }
+
+  static async countAll(filters = {}) {
+    try {
+      let sql = `
+        SELECT COUNT(*) as total
+        FROM consultations c
+        WHERE 1=1
+      `;
+      const params = [];
+
+      // Filtres (mêmes que findAll)
+      if (filters.doctor_id) {
+        sql += ' AND c.doctor_id = ?';
+        params.push(filters.doctor_id);
+      }
+
+      if (filters.status) {
+        sql += ' AND c.status = ?';
+        params.push(filters.status);
+      }
+
+      if (filters.patient_name) {
+        sql += ' AND c.patient_name LIKE ?';
+        params.push(`%${filters.patient_name}%`);
+      }
+
+      if (filters.date_from) {
+        sql += ' AND c.consultation_date >= ?';
+        params.push(filters.date_from);
+      }
+
+      if (filters.date_to) {
+        sql += ' AND c.consultation_date <= ?';
+        params.push(filters.date_to);
+      }
+
+      if (filters.site_id) {
+        sql += ' AND c.site_id = ?';
+        params.push(filters.site_id);
+      }
+
+      const result = await query(sql, params);
+      return result[0]?.total || 0;
+    } catch (error) {
+      throw new Error(`Erreur lors du comptage des consultations: ${error.message}`);
     }
   }
 

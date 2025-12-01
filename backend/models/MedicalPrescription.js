@@ -157,6 +157,48 @@ class MedicalPrescription {
     }
   }
 
+  static async countByDoctor(doctor_id, filters = {}) {
+    try {
+      let sql = `
+        SELECT COUNT(*) as total
+        FROM medical_prescriptions mp
+        WHERE mp.doctor_id = ?
+      `;
+      const params = [doctor_id];
+
+      // Filtres (mêmes que findByDoctor)
+      if (filters.status) {
+        sql += ' AND mp.status = ?';
+        params.push(filters.status);
+      }
+
+      if (filters.patient_name) {
+        sql += ' AND mp.patient_name LIKE ?';
+        params.push(`%${filters.patient_name}%`);
+      }
+
+      if (filters.date_from) {
+        sql += ' AND mp.prescribed_date >= ?';
+        params.push(filters.date_from);
+      }
+
+      if (filters.date_to) {
+        sql += ' AND mp.prescribed_date <= ?';
+        params.push(filters.date_to);
+      }
+
+      if (filters.site_id) {
+        sql += ' AND mp.site_id = ?';
+        params.push(filters.site_id);
+      }
+
+      const result = await query(sql, params);
+      return result[0]?.total || 0;
+    } catch (error) {
+      throw new Error(`Erreur lors du comptage des ordonnances médicales: ${error.message}`);
+    }
+  }
+
   static async findByDoctor(doctor_id, limit = 50, offset = 0, filters = {}) {
     try {
       let sql = `
@@ -213,6 +255,53 @@ class MedicalPrescription {
       return prescriptionsWithItems;
     } catch (error) {
       throw new Error(`Erreur lors de la recherche des ordonnances médicales: ${error.message}`);
+    }
+  }
+
+  static async countAll(filters = {}) {
+    try {
+      let sql = `
+        SELECT COUNT(*) as total
+        FROM medical_prescriptions mp
+        WHERE 1=1
+      `;
+      const params = [];
+
+      // Filtres (mêmes que findAll)
+      if (filters.doctor_id) {
+        sql += ' AND mp.doctor_id = ?';
+        params.push(filters.doctor_id);
+      }
+
+      if (filters.status) {
+        sql += ' AND mp.status = ?';
+        params.push(filters.status);
+      }
+
+      if (filters.patient_name) {
+        sql += ' AND mp.patient_name LIKE ?';
+        params.push(`%${filters.patient_name}%`);
+      }
+
+      if (filters.date_from) {
+        sql += ' AND mp.prescribed_date >= ?';
+        params.push(filters.date_from);
+      }
+
+      if (filters.date_to) {
+        sql += ' AND mp.prescribed_date <= ?';
+        params.push(filters.date_to);
+      }
+
+      if (filters.site_id) {
+        sql += ' AND mp.site_id = ?';
+        params.push(filters.site_id);
+      }
+
+      const result = await query(sql, params);
+      return result[0]?.total || 0;
+    } catch (error) {
+      throw new Error(`Erreur lors du comptage des ordonnances médicales: ${error.message}`);
     }
   }
 

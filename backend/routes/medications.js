@@ -9,8 +9,8 @@ const { ROLES } = require('../services/roleService');
 router.use(authenticateToken);
 
 // Routes publiques (lecture seule) pour tous les utilisateurs authentifiés
-router.get('/', authorize('admin', 'admin pharmacist', 'pharmacist'), MedicationController.getAllMedications);
-router.get('/:id', authorize('admin', 'admin pharmacist', 'pharmacist'), MedicationController.getMedicationById);
+router.get('/', authorize(ROLES.ADMIN, ROLES.ADMIN_PHARMACIST, ROLES.PHARMACIST, ROLES.DOCTOR, ROLES.HEAD_DOCTOR), MedicationController.getAllMedications);
+router.get('/:id', authorize(ROLES.ADMIN, ROLES.ADMIN_PHARMACIST, ROLES.PHARMACIST, ROLES.DOCTOR, ROLES.HEAD_DOCTOR), MedicationController.getMedicationById);
 
 // Routes protégées pour admin et admin pharmacist seulement
 router.use(authorize(ROLES.ADMIN, ROLES.ADMIN_PHARMACIST));
