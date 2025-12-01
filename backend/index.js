@@ -27,6 +27,63 @@ const unitRoutes = require('./routes/units');
 
 const app = express();
 
+// -------------------------
+// Prometheus instrumentation
+// -------------------------
+try {
+  const client = require('prom-client');
+
+  // Collect default metrics (CPU, memory, node, process, etc.)
+  client.collectDefaultMetrics({ timeout: 5000 });
+
+  // HTTP request duration histogram (seconds)
+  const httpRequestDurationSeconds = new client.Histogram({
+    name: 'backend_http_request_duration_seconds',
+    help: 'Duration of HTTP requests in seconds',
+    labelNames: ['method', 'status', 'path'],
+    buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10]
+  });
+
+  // HTTP requests counter
+  const httpRequestCounter = new client.Counter({
+    name: 'backend_http_requests_total',
+    help: 'Total number of HTTP requests',
+    labelNames: ['method', 'status', 'path']
+  });
+
+  // Middleware to observe request durations and counts
+  app.use((req, res, next) => {
+    const start = process.hrtime();
+    res.on('finish', () => {
+      try {
+        const delta = process.hrtime(start);
+        const durationSeconds = delta[0] + delta[1] / 1e9;
+        const path = req.route && req.route.path ? req.route.path : req.path || req.originalUrl || 'unknown';
+        const status = res.statusCode ? String(res.statusCode) : '0';
+        httpRequestDurationSeconds.labels(req.method, status, path).observe(durationSeconds);
+        httpRequestCounter.labels(req.method, status, path).inc();
+      } catch (e) {
+        // don't break the response flow on metric errors
+        console.debug('Metric collection error', e && e.message);
+      }
+    });
+    next();
+  });
+
+  // Expose metrics endpoint BEFORE any rate limiter so Prometheus can scrape reliably
+  app.get('/metrics', async (req, res) => {
+    try {
+      res.set('Content-Type', client.register.contentType);
+      res.end(await client.register.metrics());
+    } catch (err) {
+      res.status(500).end(err && err.message);
+    }
+  });
+
+} catch (err) {
+  console.warn('prom-client not available, skipping metrics setup');
+}
+
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
