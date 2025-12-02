@@ -84,8 +84,8 @@ const AdminPharmacistSidebar = ({ isOpen, onToggle, onLogout }) => {
               />
             </div>
             <div className="brand-text">
-              <h6 className="mb-0 fw-bold text-white">FUNTOA</h6>
-              <small className="text-light">Pharmacie</small>
+              <h6 className="mb-0 fw-bold text-white">FUNTOA SMIE</h6>
+              <small className="text-light">Administrateur Pharmacie</small>
             </div>
           </div>
           

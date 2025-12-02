@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Spinner, Card as BSCard } from 'react-bootstrap';
+import { Container, Row, Col, Badge, Spinner, Alert, Card as BSCard } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import AdminPharmacistSidebar from './AdminPharmacistSidebar';
@@ -13,6 +13,32 @@ import MedicationService from '../../services/medicationService';
 import SiteService from '../../services/siteService';
 import StockMovementService from '../../services/stockMovementService';
 import './AdminPharmacistDashboard.css';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Tooltip,
+  Legend,
+  Filler,
+} from 'chart.js';
+import { Line, Bar, Doughnut, Pie } from 'react-chartjs-2';
+
+// Register ChartJS components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Tooltip,
+  Legend,
+  Filler
+);
 
 const AdminPharmacistDashboard = () => {
   const { logout } = useAuth();
@@ -97,14 +123,53 @@ const AdminPharmacistDashboard = () => {
     return Array.isArray(stats.alerts) ? stats.alerts.length : 0;
   };
 
-  const getPendingOrdersCount = () => {
-    if (!stats.orders) return 0;
-    return stats.orders.pending_count || 0;
+  // Chart Data
+  const stockChartData = {
+    labels: ['En stock', 'Stock faible', 'Rupture'],
+    datasets: [
+      {
+        label: 'Distribution des stocks',
+        data: [70, 20, 10],
+        backgroundColor: ['#28a745', '#ffc107', '#dc3545'],
+        borderColor: ['#1e7e34', '#e0a800', '#c82333'],
+        borderWidth: 2,
+      },
+    ],
   };
 
-  const getPendingDistributionsCount = () => {
-    if (!stats.distributions) return 0;
-    return stats.distributions.pending_count || 0;
+  const ordersChartData = {
+    labels: ['Complet', 'En attente', 'Annulé'],
+    datasets: [
+      {
+        label: 'Statut des commandes',
+        data: [stats.orders?.completed_count || 0, stats.orders?.pending_count || 0, stats.orders?.cancelled_count || 0],
+        backgroundColor: ['#28a745', '#ffc107', '#dc3545'],
+        borderColor: ['#1e7e34', '#e0a800', '#c82333'],
+        borderWidth: 2,
+      },
+    ],
+  };
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: true,
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: {
+          font: { size: 12, weight: '600' },
+          padding: 15,
+          usePointStyle: true,
+        },
+      },
+      tooltip: {
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        padding: 12,
+        borderRadius: 8,
+        titleFont: { size: 14, weight: 'bold' },
+        bodyFont: { size: 13 },
+      },
+    },
   };
 
   return (
@@ -129,8 +194,39 @@ const AdminPharmacistDashboard = () => {
             </div>
           ) : (
             <>
+              {/* Header */}
+              <Row className="mb-5">
+                <Col>
+                  <div className="dashboard-header">
+                    <div>
+                      <h1 className="dashboard-title">Tableau de bord Pharmacie</h1>
+                      <p className="dashboard-subtitle">Vue d'ensemble en temps réel de vos opérations</p>
+                    </div>
+                    <button 
+                      className="btn btn-refresh"
+                      onClick={loadDashboardData}
+                    >
+                      <Icon name="refresh" size={16} className="me-2" />
+                      Actualiser
+                    </button>
+                  </div>
+                </Col>
+              </Row>
+
               {/* KPI Cards */}
               <Row className="g-4 mb-5">
+                <Col xs={12} sm={6} lg={3}>
+                  <div className="kpi-card kpi-green">
+                    <div className="kpi-icon">
+                      <Icon name="database" size={32} />
+                    </div>
+                    <div className="kpi-content">
+                      <p className="kpi-label">Stock Total</p>
+                      <h2 className="kpi-value">{formatNumber(stats.stock?.total_quantity || 0)}</h2>
+                      <p className="kpi-meta">{formatNumber(stats.stock?.total_medications || 0)} articles</p>
+                    </div>
+                  </div>
+                </Col>
 
                 <Col xs={12} sm={6} lg={3}>
                   <div className="kpi-card kpi-blue">
@@ -140,7 +236,7 @@ const AdminPharmacistDashboard = () => {
                     <div className="kpi-content">
                       <p className="kpi-label">Commandes</p>
                       <h2 className="kpi-value">{formatNumber(stats.orders?.total_count || 0)}</h2>
-                      <p className="kpi-meta">{getPendingOrdersCount()} en attente</p>
+                      <p className="kpi-meta">{stats.orders?.pending_count || 0} en attente</p>
                     </div>
                   </div>
                 </Col>
@@ -153,7 +249,7 @@ const AdminPharmacistDashboard = () => {
                     <div className="kpi-content">
                       <p className="kpi-label">Distributions</p>
                       <h2 className="kpi-value">{formatNumber(stats.distributions?.total_count || 0)}</h2>
-                      <p className="kpi-meta">{getPendingDistributionsCount()} en attente</p>
+                      <p className="kpi-meta">{stats.distributions?.pending_count || 0} en attente</p>
                     </div>
                   </div>
                 </Col>
@@ -168,6 +264,50 @@ const AdminPharmacistDashboard = () => {
                       <h2 className="kpi-value">{getAlertCount()}</h2>
                       <p className="kpi-meta">signalées</p>
                     </div>
+                  </div>
+                </Col>
+              </Row>
+
+              {/* Charts Row */}
+              <Row className="g-4 mb-5">
+                <Col lg={6}>
+                  <BSCard className="chart-card border-0 shadow-sm">
+                    <BSCard.Body className="p-4">
+                      <h5 className="chart-title mb-4">
+                        <Icon name="chart-pie" size={18} className="me-2" />
+                        Distribution des Stocks
+                      </h5>
+                      <div style={{ height: '300px', position: 'relative' }}>
+                        <Doughnut data={stockChartData} options={chartOptions} />
+                      </div>
+                    </BSCard.Body>
+                  </BSCard>
+                </Col>
+
+                <Col lg={6}>
+                  <BSCard className="chart-card border-0 shadow-sm">
+                    <BSCard.Body className="p-4">
+                      <h5 className="chart-title mb-4">
+                        <Icon name="chart-bar" size={18} className="me-2" />
+                        État des Commandes
+                      </h5>
+                      <div style={{ height: '300px', position: 'relative' }}>
+                        <Pie data={ordersChartData} options={chartOptions} />
+                      </div>
+                    </BSCard.Body>
+                  </BSCard>
+                </Col>
+              </Row>
+
+              {/* Secondary Stats */}
+              <Row className="g-4 mb-5">
+                <Col xs={12} sm={6} lg={3}>
+                  <div className="stat-box">
+                    <div className="stat-icon stat-icon-primary">
+                      <Icon name="pills" size={24} />
+                    </div>
+                    <h6 className="stat-title">Médicaments</h6>
+                    <p className="stat-value">{formatNumber(stats.medications?.total_count || 0)}</p>
                   </div>
                 </Col>
 
@@ -224,30 +364,6 @@ const AdminPharmacistDashboard = () => {
                     <Icon name="shopping-cart" size={32} />
                     <h6>Commandes</h6>
                     <p>Gestion des commandes</p>
-                  </div>
-                </Col>
-
-                <Col md={6} lg={4}>
-                  <div className="action-card action-card-success" onClick={() => navigate('/admin-pharmacist/distribution')}>
-                    <Icon name="truck" size={32} />
-                    <h6>Distribution</h6>
-                    <p>Distribution aux sites</p>
-                  </div>
-                </Col>
-
-                <Col md={6} lg={4}>
-                  <div className="action-card action-card-info" onClick={() => navigate('/admin-pharmacist/site-stocks')}>
-                    <Icon name="warehouse" size={32} />
-                    <h6>Stocks par Site</h6>
-                    <p>Visualiser les stocks</p>
-                  </div>
-                </Col>
-
-                <Col md={6} lg={4}>
-                  <div className="action-card action-card-warning" onClick={() => navigate('/admin-pharmacist/sites')}>
-                    <Icon name="building" size={32} />
-                    <h6>Gestion des Sites</h6>
-                    <p>Gérer les sites</p>
                   </div>
                 </Col>
               </Row>

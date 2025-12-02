@@ -59,17 +59,93 @@
   font-size: 0.9rem;
 }
 
-/* Medications Grid */
+/* Medications Grid: use CSS Grid for precise column control */
 .medications-grid {
   width: 100%;
 }
 
-.medications-grid .row {
-  margin: 0 -0.5rem;
+/* Use a CSS Grid inside the medications container so we can show exactly 5 columns on large screens */
+/* Target the Row element directly inside medications-grid to avoid being
+   overridden by Bootstrap's generic `.row` rules loaded later. */
+.medications-grid > .row {
+  /* force grid even if bootstrap rules are loaded after this file */
+  display: grid !important;
+  /* give each column a sensible minimum so cards don't shrink too small */
+  grid-template-columns: repeat(6, minmax(200px, 1fr)) !important;
+  gap: 1rem !important; /* space between cards */
+  margin: 0 !important; /* reset bootstrap row negative margins within this scoped container */
+  align-items: start !important;
+  grid-auto-rows: minmax(0, auto) !important;
+  justify-content: start; /* start grid to avoid centering under the sidebar */
 }
 
-.medications-grid .col {
-  padding: 0 0.5rem;
+/* Ensure main content is shifted on wide screens so sidebar doesn't overlap */
+@media (min-width: 992px) {
+  .admin-pharmacist-dashboard .main-content {
+    margin-left: 280px !important; /* force shift when sidebar is visible */
+    padding-right: 1rem;
+  }
+
+  /* keep the grid inside the available area and add comfortable padding */
+  .admin-pharmacist-dashboard .medications-grid {
+    padding: 1rem 1rem 2rem 1rem;
+    box-sizing: border-box;
+    max-width: calc(100% - 300px);
+  }
+}
+
+/* Individual column/card wrapper styling */
+.medications-grid > .row > .col {
+  padding: 0 !important; /* spacing handled by grid gap */
+  width: auto !important; /* ensure grid controls sizing, avoid Bootstrap column width rules */
+  max-width: none !important; /* override Bootstrap's 100% column widths */
+  flex: none !important; /* ignore flex behavior if still applied */
+}
+
+/* Ensure the card fills the grid cell and uses full available width/height */
+.medications-grid > .row > .col .medication-card,
+.medications-grid > .row > .col .card {
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.medications-grid > .row > .col .medication-card .card-body,
+.medications-grid > .row > .col .card .card-body {
+  flex: 1 1 auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* Responsive adjustments: fewer columns on smaller screens */
+@media (max-width: 1400px) {
+  .medications-grid > .row {
+    grid-template-columns: repeat(5, minmax(190px, 1fr)) !important;
+  }
+}
+
+@media (max-width: 1200px) {
+  .medications-grid > .row {
+    grid-template-columns: repeat(4, minmax(170px, 1fr)) !important;
+  }
+}
+
+@media (max-width: 992px) {
+  .medications-grid > .row {
+    grid-template-columns: repeat(3, minmax(180px, 1fr)) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .medications-grid > .row {
+    grid-template-columns: repeat(2, minmax(160px, 1fr)) !important;
+  }
+}
+
+@media (max-width: 576px) {
+  .medications-grid > .row {
+      grid-template-columns: 1fr;
+    }
 }
 
 /* Empty State */
@@ -270,16 +346,16 @@
 }
 
 /* Transitions */
-.medications-grid .col {
+.medications-grid > .row > .col {
   animation: fadeInUp 0.3s ease-out;
 }
 
-.medications-grid .col:nth-child(1) { animation-delay: 0.1s; }
-.medications-grid .col:nth-child(2) { animation-delay: 0.2s; }
-.medications-grid .col:nth-child(3) { animation-delay: 0.3s; }
-.medications-grid .col:nth-child(4) { animation-delay: 0.4s; }
-.medications-grid .col:nth-child(5) { animation-delay: 0.5s; }
-.medications-grid .col:nth-child(6) { animation-delay: 0.6s; }
+.medications-grid > .row > .col:nth-child(1) { animation-delay: 0.1s; }
+.medications-grid > .row > .col:nth-child(2) { animation-delay: 0.2s; }
+.medications-grid > .row > .col:nth-child(3) { animation-delay: 0.3s; }
+.medications-grid > .row > .col:nth-child(4) { animation-delay: 0.4s; }
+.medications-grid > .row > .col:nth-child(5) { animation-delay: 0.5s; }
+.medications-grid > .row > .col:nth-child(6) { animation-delay: 0.6s; }
 
 /* Focus Management */
 .admin-pharmacist-dashboard:focus {
@@ -297,7 +373,7 @@
     border: 1px solid #dee2e6;
   }
   
-  .medications-grid .col {
+  .medications-grid > .row > .col {
     break-inside: avoid;
     margin-bottom: 1rem;
   }

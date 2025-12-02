@@ -1,4 +1,5 @@
-# Testing Guide
+
+ Testing Guide
 
 ## Vue d'ensemble
 Ce projet utilise Jest pour les tests unitaires et d'intégration à la fois pour le backend (Node.js/Express) et le frontend (React).

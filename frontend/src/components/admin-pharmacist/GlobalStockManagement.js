@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import AdminPharmacistSidebar from './AdminPharmacistSidebar';
 import AdminPharmacistHeader from './AdminPharmacistHeader';
 import Icon from '../common/Icons';
+import './GlobalStockManagement.css';
 import MedicationService from '../../services/medicationService';
 import CategoryService from '../../services/categoryService';
 
