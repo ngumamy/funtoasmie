@@ -61,7 +61,6 @@ services:
         condition: service_healthy
     environment:
       NODE_ENV: production
-    # Exposer publiquement le port 80 (nginx est dans le Dockerfile du frontend)
     ports:
       - "80:80"
       - "443:443"

@@ -89,7 +89,6 @@ const DoctorDashboard = () => {
             <Card className="shadow-sm">
               <Card.Header className="bg-white">
                 <h4 className="mb-1 text-danger">Tableau de bord Médecin</h4>
-                <p className="text-muted mb-0">Bienvenue dans l'interface médicale de FUNTOA SMIE</p>
               </Card.Header>
               
               <Card.Body className="p-4">
